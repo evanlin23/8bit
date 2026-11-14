@@ -70,8 +70,9 @@ class Reel:
         drive = ease_io(seg(t, T_DRIVE, T_REWIND)) if t < T_REWIND else 0
         back = 1 - ease_out(seg(t, T_REWIND + 0.2, T_REWIND + 0.9)) if t >= T_REWIND else 0
         car_x = 63 + int(drive * 230) - int(back * 230)
-        bob = int(round(math.sin(t * 2.5) * 1.5))
-        cv.blit(S.HYPERCAR, car_x, 104 + bob, scale=4)
+        bob = int(round(math.sin(t * 2.618) * 1.5))  # 5 cycles per loop
+        flash = T_DONE <= t < T_DONE + 0.12
+        cv.blit(S.HYPERCAR, car_x, 104 + bob, scale=4, tint="white" if flash else None)
         if T_SWAP <= t < T_REWIND and drive > 0:
             cv.blit_ghost(S.worker(1.0), car_x + 64, 96 + bob, scale=2, phase=int(t * 8))
         cv.rect(56, 150, 158, 4, "gray_d")
@@ -80,14 +81,15 @@ class Reel:
             for k in range(6):
                 a = t * 3 + k
                 cv.blit(S.SPARK, 135 + 70 * math.cos(a) - 2, 126 + 22 * math.sin(a * 1.3) - 2)
-        cv.text(135, 160, ui.fmt_money(PRICE), "gold", scale=3, align="center")
-        cv.text(135, 186, f"SAVING ${PAY // 1000}K A YEAR", "cream", scale=2, align="center")
+        cv.text(135, 158, ui.fmt_money(PRICE), "gold", scale=3, align="center")
+        cv.text(135, 184, f"MEDIAN PAY: ${PAY // 1000}K/YR", "cream", scale=2, align="center")
+        cv.text(135, 202, "SAVING 100% OF IT", "cream", scale=2, align="center")
 
         # ---------------------------------------------------------- lower zone: worker + age
         frame = int(t * 8) % 2 if T_GRIND <= t < T_DONE else 0
         wy = 222
         if ghost:
-            float_y = int(round(math.sin(t * 4) * 2)) - 3
+            float_y = int(round(math.sin(t * 4.1888) * 2)) - 3
             if not (T_SWAP <= t < T_REWIND and drive > 0):
                 cv.blit_ghost(S.worker(1.0, frame), 16, wy + float_y, scale=4, phase=int(t * 8))
         else:
@@ -97,7 +99,8 @@ class Reel:
         col = "red" if a_int >= LIFE_EXP else "white"
         if T_DONE <= t < T_SWAP:
             col = "gold"
-        cv.text(66, 246, str(a_int), col, scale=6)
+        pop = 1 if T_DONE <= t < T_DONE + 0.2 else 0
+        cv.text(66, 246 - pop * 4, str(a_int), col, scale=6 + pop)
         saved = min(PRICE, (age - START_AGE) * PAY)
         cv.text(CX + 56, 230, "SAVED", "cream", scale=2, align="center")
         cv.text(CX + 56, 250, ui.fmt_money(saved) if saved >= 1e6 else f"${saved / 1e3:,.0f}K",
@@ -110,21 +113,23 @@ class Reel:
         cv.rect(x79, BAR_Y - 4, 2, 20, "red")
         cv.blit(S.TOMB, x79 - 7, BAR_Y - 22, scale=2)
         cv.text(x79 - 2, BAR_Y + 18, str(LIFE_EXP), "red", scale=2, align="right")
-        cv.rect(x86, BAR_Y - 4, 2, 20, "gold")
-        cv.blit(MINI_CAR, x86 - 9, BAR_Y - 16, scale=2)
-        cv.text(x86 + 4, BAR_Y + 18, str(END_AGE), "gold", scale=2)
+        if T_DONE <= t < T_REWIND + 0.6:
+            cv.rect(x86, BAR_Y - 4, 2, 20, "gold")
+            cv.blit(MINI_CAR, x86 - 9, BAR_Y - 16, scale=2)
+            cv.text(x86 + 4, BAR_Y + 18, str(END_AGE), "gold", scale=2)
+        else:
+            cv.text(BAR_X1 + 6, BAR_Y - 1, "?", "gold", scale=2)
 
         # ---------------------------------------------------------- stamps
         if T_DEATH <= t < T_DEATH + 1.0:
             ui.stamp(cv, "LIFE EXPECTANCY", t, T_DEATH, color="red", scale=2, y=112)
             ui.stamp(cv, "REACHED", t, T_DEATH + 0.08, color="red", scale=3, y=136)
-        if T_DONE <= t < T_SWAP:
-            ui.stamp(cv, f"AGE {END_AGE}", t, T_DONE, color="gold", scale=6, y=100)
+
         cv.ox = cv.oy = 0
 
     # ------------------------------------------------------------ audio
     def music(self):
-        return A.render_song(A.MORNING_MOOD, SECONDS, 100, layers_at=(0, 0.3, 1.5))
+        return A.render_song(A.MORNING_MOOD, SECONDS, 100, layers_at=(0, 0, 0))
 
     def duck_windows(self):
         return [(T_DEATH, T_DEATH + 0.4)]

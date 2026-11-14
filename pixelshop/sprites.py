@@ -351,3 +351,16 @@ TOMB = ascii_sprite([
     "kggggggk",
     "kkkkkkkk",
 ])
+
+
+HEAD = ascii_sprite([
+    "..kkkk..",
+    ".khhhhk.",
+    "khhhhhhk",
+    "khsssshk",
+    "kskssksk",
+    "kssssssk",
+    ".kssssk.",
+    "kbbbbbbk",
+    "kbbbbbbk",
+])

@@ -229,7 +229,7 @@ def background(cv, t, seed=0):
     n = 46
     xs, ys_, ph = rng.integers(0, cv.w, n), rng.integers(0, cv.h, n), rng.random(n) * 6.28
     for x, y, p in zip(xs, ys_, ph):
-        v = np.sin(t * 2.2 + p)
+        v = np.sin(t * 2.0944 + p)  # 4 cycles per 12s loop
         if v > 0.55:
             cv.rect(x, y, 1, 1, "gold_l")
             if v > 0.9:

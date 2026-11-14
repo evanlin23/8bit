@@ -21,12 +21,12 @@ FACTS = [
 ]
 
 SECONDS = 12.0          # 8 bars of the theme at 160 bpm -> music loops seamlessly
-T_ROLL, T_PRICE = 0.2, 1.4
-T_PAY, T_PAY_END = 1.7, 3.1
-T_FAIL = 3.15
-T_PAID = 4.15
-T_COUNT, T_LAND = 5.35, 8.35
-T_REWIND = 10.45
+T_ROLL, T_PRICE = 0.2, 1.5
+T_PAY, T_PAY_END = 1.85, 3.3
+T_FAIL = 3.35
+T_PAID = 4.3
+T_COUNT, T_LAND = 5.5, 8.7
+T_REWIND = 10.0
 
 CX = 118  # centre of the lower zone (keeps clear of the Shorts button rail)
 
@@ -41,7 +41,7 @@ def bags_at(t):
     if t < T_COUNT:
         return 0
     if t < T_REWIND:
-        return int(min(NEEDED, NEEDED * ease_in(seg(t, T_COUNT, T_LAND - 0.15) ** 0.55)))
+        return max(1, int(min(NEEDED, NEEDED * ease_in(seg(t, T_COUNT, T_LAND - 0.15) ** 0.55))))
     return int(NEEDED * (1 - seg(t, T_REWIND, T_REWIND + 0.9)))
 
 
@@ -62,7 +62,7 @@ class Reel:
         counting = T_COUNT <= t < T_REWIND + 0.9
         # ---------------------------------------------------------- stage (full width)
         if not counting:
-            bob = int(round(math.sin(t * 2.4) * 2))
+            bob = int(round(math.sin(t * 2.618) * 2))  # 5 cycles per loop
             cv.blit(S.MOON, 150, 98 + bob, scale=2)
             lift = int(ease_in(seg(t, T_PAY, T_FAIL)) * 14)
             if T_FAIL <= t:
@@ -73,12 +73,12 @@ class Reel:
                 cv.blit(S.FLAME[int(t * 14) % 2], 52 + rumble, 192 - lift, scale=4)
         else:
             k = bags_at(t)
-            cols, dx, dy = 15, 16, 12
-            x0 = (cv.w - (cols - 1) * dx - 14) // 2
-            for i in range(k):
+            cols, dx, dy = 15, 17, 13
+            x0 = (cv.w - (cols - 1) * dx - 16) // 2
+            for i in range(k):  # a crowd of 119 of him
                 r, c = divmod(i, cols)
                 hop = int(round(2 * max(0.0, math.sin(t * 9 - c * 0.6)))) if landed else 0
-                cv.blit(S.MONEYBAG, x0 + c * dx, 100 + r * dy - hop)
+                cv.blit(S.HEAD, x0 + c * dx, 98 + r * dy - hop, scale=2)
 
         # ---------------------------------------------------------- lower zone
         if not counting:
@@ -91,14 +91,14 @@ class Reel:
                 col = "white" if T_PRICE <= t < T_PRICE + 0.08 else "gold"
             cv.text(CX, 240, price, col, scale=5, align="center")
             broke = T_FAIL <= t < T_REWIND
-            hop = int(6 * math.sin(math.pi * seg(t, 1.45, 1.7)))
+            hop = int(6 * math.sin(math.pi * seg(t, 1.55, 1.8)))
             cv.blit(S.shopper("hoodie", sweat=broke), 16, 290 - hop, scale=3)
             cv.text(56, 296, "MRBEAST", "white", scale=2)
             v = 0 if broke else wallet_value(t)
             cv.text(56, 316, ui.fmt_money(v), "red" if broke else "gold", scale=4)
         else:
             k = bags_at(t)
-            pulse = 1 if landed and int(t * 6) % 2 == 0 else 0
+            pulse = 1 if T_LAND <= t < T_LAND + 0.15 else 0  # one pop, then hold
             cv.text(CX, 236, f"x{k}", "gold", scale=6 + pulse, align="center")
             cv.text(CX, 292, "MRBEASTS", "white", scale=2, align="center")
 
@@ -116,7 +116,7 @@ class Reel:
 
     # ------------------------------------------------------------ audio
     def music(self):
-        return A.render_song(A.MOUNTAIN_KING, SECONDS, 160, layers_at=(0, T_PAY, T_ROLL),
+        return A.render_song(A.MOUNTAIN_KING, SECONDS, 160, layers_at=(0, 0, 0),
                              sections=[0, 7])
 
     def duck_windows(self):
@@ -126,7 +126,7 @@ class Reel:
         for i in range(16):
             A.sfx_tick(tr, T_ROLL + (T_PRICE - T_ROLL) * ease_out(i / 16) * 0.97, 0.06, pitch=76 + i)
         A.sfx_thud(tr, T_PRICE, 0.4)
-        A.sfx_select(tr, 1.45)
+        A.sfx_select(tr, 1.55)
         t = T_PAY + 0.35
         while t < T_PAY_END + 0.4:
             A.sfx_coin(tr, t, 0.07)
@@ -145,8 +145,8 @@ class Reel:
                 prev = k
         A.sfx_kaching(tr, T_LAND, 0.13)
         A.sfx_fanfare(tr, T_LAND + 0.15, 0.13)
-        for i in range(5):
-            A.sfx_coin(tr, T_LAND + 1.0 + i * 0.22, 0.04)
+        for i in range(4):
+            A.sfx_coin(tr, T_LAND + 0.7 + i * 0.2, 0.04)
         A.sfx_whoosh(tr, T_REWIND, 0.8, 0.09)
         for i in range(12):
             A.sfx_tick(tr, T_REWIND + 0.1 + i * 0.12, 0.05, pitch=90 - i * 2)
