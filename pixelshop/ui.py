@@ -35,13 +35,13 @@ def title(cv, lines, y=18, h=None, scale=2, fill="navy", color="white", accent=N
     return y + h
 
 
-def dialog(cv, text, t, t0, y=334, h=50, cps=30, color="white", fill="navy_d", speaker=None):
+def dialog(cv, text, t, t0, y=334, h=50, cps=30, color="white", fill="navy_d", speaker=None, scale=1):
     """Typewriter dialog box. Returns number of chars shown."""
     cv.window(8, y, cv.w - 16, h, fill=fill)
     if t < t0:
         return 0
     n = int((t - t0) * cps)
-    max_chars = (cv.w - 16 - 14) // 6
+    max_chars = (cv.w - 16 - 14) // (6 * scale)
     lines = wrap(text, max_chars)
     shown, yy = n, y + 8
     if speaker:
@@ -50,9 +50,9 @@ def dialog(cv, text, t, t0, y=334, h=50, cps=30, color="white", fill="navy_d", s
     for ln in lines:
         if shown <= 0:
             break
-        cv.text(16, yy, ln[:shown], color)
+        cv.text(16, yy, ln[:shown], color, scale=scale)
         shown -= len(ln) + 1
-        yy += 11
+        yy += 11 * scale
     if n >= len(text) and int(t * 3) % 2 == 0:  # "more" arrow
         cv.text(cv.w - 20, y + h - 12, ">", "gold", shadow=None)
     return n
