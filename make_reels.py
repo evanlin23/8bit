@@ -4,6 +4,7 @@ usage:
   python3 make_reels.py                 # render all reels to out/
   python3 make_reels.py apollo          # render one
   python3 make_reels.py apollo --sheet  # contact sheet of stills (fast preview)
+  python3 make_reels.py --lint          # pacing check: dead air > 0.7s, silent stretches
 """
 import importlib
 import os
@@ -19,6 +20,10 @@ def main(argv):
     os.makedirs("out", exist_ok=True)
     for name in names:
         reel = importlib.import_module(f"reels.{name}").REEL
+        if "--lint" in argv:
+            from pixelshop.lint import lint, report
+            report(name, lint(reel))
+            continue
         if "--sheet" in argv:
             n = 24
             times = [i * reel.seconds / n for i in range(n)]

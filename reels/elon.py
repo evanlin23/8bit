@@ -1,21 +1,27 @@
-"""Concept reel 2 (shopping-spree format): Elon Musk goes shopping until he's broke."""
+"""Concept reel 2 (shopping-spree format): Can Elon buy all 5?
+
+v2 after review: 12s seamless loop, one item on stage at a time, first purchase at 0.15s,
+checklist instead of a shop list + bag, one clear payoff.
+"""
+import math
+
 from pixelshop import audio as A
 from pixelshop import sprites as S
 from pixelshop import ui
-from pixelshop.gfx import background, back_out, ease_in, ease_io, ease_out, seg
+from pixelshop.gfx import background, back_out, ease_io, ease_out, seg
 
-NET_WORTH = 889e9      # Forbes real-time, Nov 13 2026
+NET_WORTH = 889e9       # Forbes real-time, Nov 13 2026
 MEDIAN_PAY = 1232 * 52  # BLS median weekly earnings, full-time, Q3 2026 -> $64,064/yr
 
-ITEMS = [  # (label, price, sprite, scale)
-    ("EVERY NFL TEAM", 304e9, S.FOOTBALL, 1),
-    ("MCDONALD'S", 195e9, S.BURGER, 1),
-    ("APOLLO PROGRAM", 309e9, S.ROCKET, 1),
-    ("TWITTER (AGAIN)", 44e9, S.BIRD, 1),
-    ("DISNEY", 190e9, S.CASTLE, 1),
+ITEMS = [  # (label, price, sprite, scale on stage)
+    ("EVERY NFL TEAM", 304e9, S.FOOTBALL, 4),
+    ("MCDONALD'S", 195e9, S.BURGER, 4),
+    ("APOLLO PROGRAM", 309e9, S.ROCKET, 3),
+    ("TWITTER (AGAIN)", 44e9, S.BIRD, 4),
+    ("DISNEY", 190e9, S.CASTLE, 3),
 ]
 LEFT = NET_WORTH - sum(p for _, p, _, _ in ITEMS[:4])   # $37B
-YEARS = LEFT / MEDIAN_PAY                                # ~577,000
+YEARS = round(LEFT / MEDIAN_PAY)                        # 577,547
 
 FACTS = [
     "Elon Musk net worth: $889.3B - Forbes Real-Time Billionaires, Nov 13 2026",
@@ -24,33 +30,33 @@ FACTS = [
     "Apollo program: ~$309B in 2025 dollars - The Planetary Society",
     "Twitter: $44B (2022 purchase price)",
     "Disney market cap: ~$190B (late Oct/Nov 2026 quotes ranged $183-197B)",
-    f"Leftover {ui.fmt_money(LEFT)} / $64,064 (BLS median full-time pay, Q3 2026: $1,232/wk) = {YEARS:,.0f} years",
+    f"Leftover {ui.fmt_money(LEFT)} / $64,064 (BLS median full-time pay, Q3 2026: $1,232/wk) = {YEARS:,} years",
 ]
 
-T_HELLO = 1.3
-BUYS = [3.4, 6.6, 9.3, 11.6]   # accelerating purchases
-T_DENY = 13.8
-T_LEFT = 16.0
-T_YEARS = 17.0
-T_END = 22.2
-SECONDS = 25.0
-PAY_DUR = [1.5, 1.3, 1.2, 0.8]
+SECONDS = 12.0          # 12 bars of the rag at 120 bpm -> seamless loop
+STARTS = [0.15, 1.5, 2.75, 3.85, 4.85]
+T_DENY = 5.15
+T_SWAP = 6.05
+T_COUNT, T_LAND = 6.25, 8.3
+T_REWIND = 10.4
+CX = 118
 
-TXT_HELLO = "WELCOME, MR. MUSK. WHAT'LL IT BE?"
-TXT_BUY = ["32 TEAMS. ONE OWNER.", "EVERY SINGLE LOCATION.", "ALL 6 MOON LANDINGS.", "AGAIN. WHY NOT."]
-TXT_DENY = f"DISNEY IS $190B. YOU HAVE {ui.fmt_money(LEFT)}."
-TXT_YEARS = "THAT'S ONE AVERAGE U.S. PAYCHECK... FOR ABOUT 577,000 YEARS."
-TXT_END = "NEXT CUSTOMER? COMMENT WHO SHOULD SHOP NEXT."
 
-ROW_Y0, ROW_H = 146, 27
-SLOT_Y = 292
+def paid(i, t):
+    s = STARTS[i]
+    return ease_io(seg(t, s + 0.2, s + 0.7))
 
 
 def wallet_at(t):
-    v = NET_WORTH
-    for i, tb in enumerate(BUYS):
-        v -= ITEMS[i][1] * ease_io(seg(t, tb, tb + PAY_DUR[i]))
-    return v
+    if t >= T_REWIND:
+        return LEFT + (NET_WORTH - LEFT) * ease_io(seg(t, T_REWIND + 0.1, SECONDS - 0.15))
+    return NET_WORTH - sum(ITEMS[i][1] * paid(i, t) for i in range(4))
+
+
+def current_item(t):
+    if t >= T_REWIND or t < STARTS[1]:
+        return 0
+    return max(i for i, s in enumerate(STARTS) if t >= s)
 
 
 class Reel:
@@ -58,147 +64,105 @@ class Reel:
     seconds = SECONDS
     music_gain = 0.55
 
-    def cursor_row(self, t):
-        row = 0
-        for i, tb in enumerate(BUYS + [T_DENY]):
-            if t >= tb - 0.45:
-                row = i
-        return row
-
     def draw(self, cv, t, hook=False):
-        if hook:
-            t_eff = 0.0
-        else:
-            t_eff = t
-        t = t_eff
-        ui.shake(cv, t, [(T_DENY, T_DENY + 0.45)], amp=4)
+        ui.shake(cv, t, [(T_DENY, T_DENY + 0.4), (T_LAND, T_LAND + 0.25)], amp=4)
         background(cv, t, seed=11)
-        ui.hud(cv, t, "002")
-        if t < T_LEFT:
-            ui.title(cv, ["ELON MUSK HAS $889B.", "LET'S GO SHOPPING."], accent={1: "gold"})
+        if T_SWAP <= t < T_REWIND + 0.9:
+            ui.title(cv, ["HE GOT 4 OF 5.", f"CHANGE: {ui.fmt_money(LEFT)}"], y=28, fill="green_d",
+                     accent={1: "gold"})
         else:
-            ui.title(cv, ["LEFTOVER:", ui.fmt_money(LEFT)], fill="green_d", accent={1: "gold"})
+            ui.title(cv, ["CAN ELON BUY", "ALL 5 OF THESE?"], y=28, accent={1: "gold"})
 
-        v = wallet_at(t)
-        ui.wallet(cv, 86, "ELON MUSK", "FORBES, NOV 13 2026", v, v / NET_WORTH, h=46, warn=T_DENY <= t < T_LEFT)
+        # ---------------------------------------------------------- stage
+        counting = T_COUNT <= t < T_REWIND + 0.9
+        if not counting:
+            i = current_item(t)
+            label, price, spr, sc = ITEMS[i]
+            h, w = spr.shape[0] * sc, spr.shape[1] * sc
+            slide = 0 if i == 0 else int((1 - ease_out(seg(t, STARTS[i], STARTS[i] + 0.15))) * 160)
+            if t >= T_REWIND:  # first item slides back in from the left for the loop
+                slide = -int((1 - ease_out(seg(t, T_REWIND + 0.9, T_REWIND + 1.2))) * 160)
+            cv.blit(spr, 135 - w // 2 + slide, 160 - h, scale=sc)
+            cv.text(135 + slide, 166, label, "white", scale=2, align="center")
+            denied = i == 4 and t >= T_DENY
+            cv.text(135 + slide, 186, ui.fmt_money(price), "red" if denied else "gold", scale=3, align="center")
+            if i < 4 and t >= STARTS[i] + 0.7:
+                ui.stamp(cv, "SOLD!", t, STARTS[i] + 0.7, color="green", scale=3, y=100)
+        else:
+            p = seg(t, T_COUNT, T_LAND - 0.1)
+            yrs = YEARS if p >= 1 else int(YEARS * ease_out(p))
+            if t >= T_REWIND:
+                yrs = int(YEARS * (1 - seg(t, T_REWIND, T_REWIND + 0.8)))
+            pulse = 1 if T_LAND <= t < T_REWIND and int(t * 6) % 2 == 0 else 0
+            cv.text(135, 112, "THAT'S", "cream", scale=2, align="center")
+            cv.text(135, 134, f"{yrs:,}", "gold", scale=5 + pulse, align="center")
+            cv.text(135, 178, "YEARS OF", "white", scale=2, align="center")
+            cv.text(135, 198, "AVERAGE PAY", "white", scale=2, align="center")
 
-        # ---- shop list
-        cv.window(8, 136, cv.w - 16, 5 * ROW_H + 12, fill="navy")
-        cur = self.cursor_row(t)
-        for i, (label, price, spr, sc) in enumerate(ITEMS):
-            y = ROW_Y0 + i * ROW_H
-            bought = i < 4 and t >= BUYS[i] + PAY_DUR[i]
-            selected = i == cur and t >= T_HELLO
-            if selected:
-                cv.rect(14, y - 3, cv.w - 28, ROW_H - 3, "navy_d")
-            # icon (fits a 22x22 box), hidden once it flies to the bag
-            if not (i < 4 and t >= BUYS[i] + PAY_DUR[i] * 0.6):
-                h, w = spr.shape[:2]
-                cv.blit(spr, 34 - w // 2, y + 10 - h // 2 if h <= 22 else y - 1, scale=1)
-            col = "gray_d" if bought else ("red" if i == 4 and t >= T_DENY else "white")
-            cv.text(56, y + 3, label, col)
-            cv.text(cv.w - 18, y + 3, ui.fmt_money(price), "gray_d" if bought else "gold", align="right")
-            if selected and int(t * 4) % 2 == 0 and not bought:
-                cv.text(16, y + 3, ">", "gold", shadow=None)
-            if bought:
-                cv.rect(56, y + 6, ui.text_w(label), 1, "red")
-                p = seg(t, BUYS[i] + PAY_DUR[i], BUYS[i] + PAY_DUR[i] + 0.15)
-                sc2 = 1 + int(round((1 - back_out(p)) * 2))
-                cv.text(cv.w - 70, y + 12, "SOLD", "red", scale=sc2, align="center")
+        # ---------------------------------------------------------- lower zone
+        broke = T_DENY <= t < T_REWIND
+        hop = int(5 * abs(math.sin(math.pi * seg(t, T_LAND, T_LAND + 0.3))))
+        cv.blit(S.shopper("suit", sweat=broke and t < T_SWAP), 16, 222 - hop, scale=3)
+        cv.text(56, 226, "ELON MUSK", "white", scale=2)
+        cv.text(56, 246, ui.fmt_money(wallet_at(t)), "red" if T_DENY <= t < T_SWAP else "gold", scale=4)
 
-        # ---- bag (inventory)
-        cv.window(8, SLOT_Y - 6, cv.w - 16, 40, fill="navy_d", border="gold")
-        cv.text(16, SLOT_Y + 8, "BAG", "gold")
-        for k in range(5):
-            sx = 44 + k * 42
-            cv.rect(sx, SLOT_Y - 1, 36, 30, "ink")
-            cv.rect(sx + 1, SLOT_Y, 34, 28, "navy")
-        for i in range(4):
-            tb, dur = BUYS[i], PAY_DUR[i]
-            t0, t1 = tb + dur * 0.6, tb + dur * 0.6 + 0.45
-            if t < t0:
-                continue
-            spr = ITEMS[i][2]
+        # checklist: 5 slots
+        for k, (_, _, spr, _) in enumerate(ITEMS):
+            x, y = 14 + k * 42, 290
+            cv.rect(x, y, 40, 34, "ink")
+            cv.rect(x + 1, y + 1, 38, 32, "navy")
             h, w = spr.shape[:2]
-            sx, sy = 44 + i * 42 + 18 - w // 2, SLOT_Y + 14 - min(h, 26) // 2
-            p = ease_in(seg(t, t0, t1))
-            fx, fy = 34 - w // 2, ROW_Y0 + i * ROW_H + 10 - min(h, 22) // 2
-            x = fx + (sx - fx) * p
-            y = fy + (sy - fy) * p - 30 * (1 - (2 * p - 1) ** 2)
-            cv.blit(spr if h <= 26 else spr[:26], x, y)
+            if h > 28:
+                spr = spr[:28]
+                h = 28
+            cv.blit(spr, x + 20 - w // 2, y + 17 - h // 2)
+            done = k < 4 and t >= STARTS[k] + 0.75 and not (t >= T_REWIND + 0.25 * (4 - k))
+            if done:
+                cv.blit(S.CHECK, x + 22, y + 16, scale=2)
+            if k == 4 and T_DENY + 0.05 <= t < T_REWIND:
+                cv.blit(S.XMARK, x + 12, y + 9, scale=2)
 
-        # ---- coins from wallet to the row being bought
-        for i, tb in enumerate(BUYS):
-            ui.coin_stream(cv, t, tb, tb + PAY_DUR[i] * 0.8, (24, 100), (cv.w - 50, ROW_Y0 + i * ROW_H + 6),
-                           rate=18 + 6 * i, flight=0.45, arc=30, seed=i + 3)
+        # coins wallet -> stage
+        for k in range(4):
+            s = STARTS[k]
+            ui.coin_stream(cv, t, s + 0.15, s + 0.55, (70, 250), (135, 150), rate=30, flight=0.35,
+                           arc=30, seed=k + 3)
 
-        # ---- dialog
-        if t < T_HELLO:
-            ui.dialog(cv, "", 0, 1)
-        elif t < BUYS[0]:
-            ui.dialog(cv, TXT_HELLO, t, T_HELLO, speaker="SHOPKEEP")
-        elif t < T_DENY:
-            i = max(k for k, tb in enumerate(BUYS) if t >= tb)
-            ui.dialog(cv, TXT_BUY[i], t, BUYS[i], speaker=f"BOUGHT: {ITEMS[i][0]}")
-        elif t < T_YEARS:
-            ui.dialog(cv, TXT_DENY, t, T_DENY + 0.4, speaker="SHOPKEEP", color="cream")
-        elif t < T_END:
-            ui.dialog(cv, TXT_YEARS, t, T_YEARS, color="white")
-        else:
-            ui.dialog(cv, TXT_END, t, T_END, color="gold")
-
-        # ---- big moments
-        ui.stamp(cv, "NOT ENOUGH", t, T_DENY, color="red", scale=3, y=190, dur=T_LEFT - T_DENY)
-        ui.stamp(cv, "GOLD!", t, T_DENY + 0.12, color="red", scale=4, y=218, dur=T_LEFT - T_DENY - 0.12)
-        if T_YEARS <= t:
-            p = seg(t, T_YEARS, T_YEARS + 2.6)
-            yrs = round(YEARS) if p >= 1 else int(YEARS * ease_out(p))
-            cv.window(30, 160, cv.w - 60, 74, fill="ink", border="gold")
-            cv.text(cv.w // 2, 172, f"{yrs:,}", "gold", scale=4, align="center")
-            cv.text(cv.w // 2, 210, "YEARS OF WORK", "white", scale=2, align="center")
-        if t >= T_END + 0.3:
-            ui.sources(cv, ["SOURCES: FORBES, PLANETARY SOCIETY,", "MARKET CAPS NOV 2026, BLS Q3 2026"])
-        if not hook:
-            ui.loop_wipe(cv, t, SECONDS - 0.55, SECONDS - 0.05, lambda c: self.draw(c, 0.0, hook=True))
+        ui.stamp(cv, "NOT ENOUGH", t, T_DENY, color="red", scale=3, y=104, dur=T_SWAP - T_DENY)
+        ui.stamp(cv, "GOLD!", t, T_DENY + 0.1, color="red", scale=4, y=132, dur=T_SWAP - T_DENY - 0.1)
         cv.ox = cv.oy = 0
 
     # ------------------------------------------------------------ audio
     def music(self):
-        def bpm(t):
-            return 92 + 26 * seg(t, BUYS[0], T_DENY)
-        a = A.render_song(A.ENTERTAINER, SECONDS, bpm, layers_at=(0, BUYS[0], BUYS[1]), end_at=T_DENY)
-        b = A.render_song(A.ENTERTAINER, SECONDS, 88, layers_at=(0, 99, 99), gain=0.8)
-        i = int((T_YEARS - 0.1) * A.SR)
-        a[i:] += b[: len(a) - i]
-        return a
+        return A.render_song(A.ENTERTAINER, SECONDS, 120, layers_at=(0, 0.15, 0.15), pickup=False)
 
     def duck_windows(self):
-        return [(T_DENY, T_DENY + 0.6)]
+        return [(T_DENY, T_DENY + 0.45)]
 
     def sfx(self, tr):
-        for tt in ui.type_times(TXT_HELLO, T_HELLO):
-            A.sfx_blip(tr, tt)
-        for i, tb in enumerate(BUYS):
-            A.sfx_blip(tr, tb - 0.45, "C6", 0.08)
-            A.sfx_select(tr, tb)
-            n = int(PAY_DUR[i] / 0.07)
-            for k in range(n):
-                A.sfx_tick(tr, tb + 0.1 + k * 0.07, 0.04, pitch=84 - (k % 8))
-            A.sfx_kaching(tr, tb + PAY_DUR[i], 0.12)
-            A.sfx_thud(tr, tb + PAY_DUR[i] * 0.6 + 0.45, 0.3)
-            for tt in ui.type_times(TXT_BUY[i], tb + 0.05):
-                A.sfx_blip(tr, tt, "E5", 0.04)
-        A.sfx_blip(tr, T_DENY - 0.45, "C6", 0.08)
+        for i in range(4):
+            s = STARTS[i]
+            if i:
+                A.sfx_whoosh(tr, s, 0.15, 0.06)
+            A.sfx_select(tr, s + 0.1)
+            for k in range(7):
+                A.sfx_tick(tr, s + 0.2 + k * 0.07, 0.045, pitch=84 - k)
+            A.sfx_kaching(tr, s + 0.7, 0.12)
+            A.sfx_thud(tr, s + 0.75, 0.25)
+        A.sfx_whoosh(tr, STARTS[4], 0.15, 0.06)
+        A.sfx_select(tr, STARTS[4] + 0.1)
         A.sfx_buzz(tr, T_DENY, 0.3)
         A.sfx_thud(tr, T_DENY, 0.5)
-        for tt in ui.type_times(TXT_DENY, T_DENY + 0.4):
-            A.sfx_blip(tr, tt, "E5", 0.04)
-        for k in range(26):
-            A.sfx_tick(tr, T_YEARS + 2.6 * ease_out(k / 26) * 0.98, 0.06, pitch=72 + k)
-        A.sfx_fanfare(tr, T_YEARS + 2.7, 0.12)
-        for tt in ui.type_times(TXT_END, T_END):
-            A.sfx_blip(tr, tt, "C6", 0.04)
-        A.sfx_whoosh(tr, SECONDS - 0.6, 0.5)
+        A.sfx_thud(tr, T_SWAP, 0.35)
+        for k in range(22):
+            A.sfx_tick(tr, T_COUNT + (T_LAND - 0.1 - T_COUNT) * ease_out(k / 22), 0.06, pitch=72 + k)
+        A.sfx_kaching(tr, T_LAND, 0.13)
+        A.sfx_fanfare(tr, T_LAND + 0.15, 0.13)
+        for i in range(5):
+            A.sfx_coin(tr, T_LAND + 1.0 + i * 0.2, 0.04)
+        A.sfx_whoosh(tr, T_REWIND, 0.8, 0.09)
+        for i in range(12):
+            A.sfx_tick(tr, T_REWIND + 0.1 + i * 0.12, 0.05, pitch=90 - i * 2)
 
 
 REEL = Reel()

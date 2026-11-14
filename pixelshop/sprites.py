@@ -288,3 +288,66 @@ def moon(r=20, seed=3):
 MOON = moon()
 
 SPARK = ascii_sprite(["..Y..", "..Y..", "YYzYY", "..Y..", "..Y.."])
+
+
+# ---------------------------------------------------------------- v2 additions
+def shopper(style="hoodie", sweat=False):
+    """Generic customer (no real-person likeness): hoodie or suit."""
+    spr = WORKER[0]
+    if style == "hoodie":
+        spr = recolor(spr, {"w": "b", "r": "b"})
+    elif style == "suit":
+        spr = recolor(spr, {"b": "G"})
+    if sweat:
+        spr = spr.copy()
+        spr[3, 8, :3], spr[3, 8, 3] = KEY["c"], 255
+        spr[4, 8, :3], spr[4, 8, 3] = KEY["c"], 255
+    return spr
+
+
+HYPERCAR = ascii_sprite([
+    "..............kkkkkkkk..............",
+    "..........kkkkBBBBBBBBkkkk..........",
+    ".......kkkBBBBBccccccBBBBBkkk.......",
+    "....kkkBBBBBBBkcccckBBBBBBBBBkkk....",
+    "..kkbbbbbbbbbbbkkkkkbbbbbbbbbbbbkkk.",
+    ".kbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbk",
+    "kyBBBkkkkkBBBBBBBBBBBBBBBBkkkkkBBBrk",
+    "kBBBkGGGGGkBBBBBBBBBBBBBBkGGGGGkBBBk",
+    ".kkkGGlllGGkkkkkkkkkkkkkkGGlllGGkkk.",
+    "....kGGGGGk..............kGGGGGk....",
+    ".....kkkkk................kkkkk.....",
+])
+
+CHECK = ascii_sprite([
+    "......kk",
+    ".....kek",
+    "kk..keEk",
+    "kek.kek.",
+    "kEekek..",
+    ".kEEek..",
+    "..kEk...",
+    "...k....",
+])
+
+XMARK = ascii_sprite([
+    "kk....kk",
+    "krk..krk",
+    ".krkkrk.",
+    "..krrk..",
+    "..krrk..",
+    ".krkkrk.",
+    "krk..krk",
+    "kk....kk",
+])
+
+TOMB = ascii_sprite([
+    "..kkkk..",
+    ".kggggk.",
+    "kggkkggk",
+    "kgkggkgk",
+    "kggkkggk",
+    "kggggggk",
+    "kggggggk",
+    "kkkkkkkk",
+])

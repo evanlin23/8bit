@@ -18,12 +18,12 @@ One reel per day, at the same time each day, so the three formats can be compare
 
 **Title**
 ```
-Could MrBeast buy the Moon landing?
+Could MrBeast buy the Apollo program?
 ```
 
 **Description**
 ```
-MrBeast walks into the Item Shop with $2.6B. The whole Apollo program costs $309B in today's money.
+MrBeast walks into the Item Shop with $2.6B. The Apollo program (all 6 Moon landings) costs $309B in today's money.
 
 The numbers:
 - Apollo program: $25.8B (1960-1973), about $309B in 2025 dollars (The Planetary Society)
@@ -46,12 +46,12 @@ Who should shop next, and what should they try to buy? 👇
 
 **Title**
 ```
-Elon has $889B. Let's go shopping.
+Can Elon buy all 5 of these?
 ```
 
 **Description**
 ```
-Elon Musk walks into the Item Shop with $889B. He buys until he can't.
+Elon Musk walks into the Item Shop with $889B. Can he buy all 5?
 
 The receipt:
 - Every NFL team: about $304B (Forbes 2026 valuations, $9.5B average x 32)
@@ -60,7 +60,7 @@ The receipt:
 - Twitter, again: $44B (2022 purchase price)
 - Disney: about $190B. Not enough gold.
 
-Leftover: $37B, about 577,000 years of a median US full-time paycheck ($1,232/week, BLS Q3 2026).
+His change: $37B = 577,547 years of a median US full-time paycheck ($64,064/yr; $1,232/week, BLS Q3 2026).
 Net worth: $889.3B, Forbes Real-Time Billionaires, Nov 13 2026.
 
 Music: "The Entertainer" (Scott Joplin, public domain), 8-bit arrangement.
@@ -81,6 +81,7 @@ What should he have bought instead? Next customer goes in the comments 👇
 ```
 How long to buy a Bugatti on an average paycheck?
 ```
+(On-screen title is shorter: "How long to buy a Bugatti?")
 
 **Description**
 ```
@@ -90,7 +91,7 @@ The numbers:
 - Bugatti Tourbillon: EUR 3.8M base price, about $4.1M. Only 250 will be built.
 - Median full-time pay: $1,232/week = $64,064/year (BLS, Q3 2026)
 - $4.1M / $64,064 = 64 years. Start at 22, drive it home at 86.
-- All 250 cars = about $1.03B = 0.12% of Elon Musk's $889B (Forbes, Nov 13 2026)
+- US life expectancy at birth: 79.0 years (CDC NCHS, 2024 data)
 
 Music: "Morning Mood" (Grieg, public domain), 8-bit arrangement.
 
@@ -99,7 +100,7 @@ Music: "Morning Mood" (Grieg, public domain), 8-bit arrangement.
 
 **Pinned comment**
 ```
-What would you grind 64 years for? 👇
+Would you make it to 86? What would you grind 64 years for? 👇
 ```
 
 ---

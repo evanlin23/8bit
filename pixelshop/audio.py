@@ -180,7 +180,8 @@ def _transpose(seq, k):
     return out
 
 
-def render_song(song, seconds, bpm, layers_at=(0, 0, 0), sections=None, gain=1.0, end_at=None):
+def render_song(song, seconds, bpm, layers_at=(0, 0, 0), sections=None, gain=1.0, end_at=None,
+                pickup=True):
     """Render a looping arrangement.
 
     bpm: number or callable(t) -> bpm (for accelerando).
@@ -192,7 +193,7 @@ def render_song(song, seconds, bpm, layers_at=(0, 0, 0), sections=None, gain=1.0
     spb = song["spb"]
     bpm_f = bpm if callable(bpm) else (lambda t: bpm)
     mel = parse_seq(song["melody"])
-    pick = parse_seq(song["pickup"]) if song["pickup"] else []
+    pick = parse_seq(song["pickup"]) if (song["pickup"] and pickup) else []
     chords = [(c.split(":")[0], float(c.split(":")[1])) for c in song["chords"].split()]
     sections = sections or [0]
     end_at = seconds if end_at is None else end_at
@@ -221,9 +222,10 @@ def render_song(song, seconds, bpm, layers_at=(0, 0, 0), sections=None, gain=1.0
                 continue
             if song["style"] == "march":
                 # bass voices the theme two octaves down, staccato (like the bassoons)
-                tr.note(st, d * 0.55, n - 24, "tri", 0.42, a=0.002, d=0.05, s=0.3)
+                gate = 0.92 if d > 0.5 else 0.55  # long notes ring, short ones stay staccato
+                tr.note(st, d * gate, n - 24, "tri", 0.42, a=0.002, d=0.05 if gate < 0.9 else 0.3, s=0.3)
                 if st >= lead_t:
-                    tr.note(st, d * 0.6, n, "pulse", 0.12, 0.25, a=0.002, d=0.05, s=0.5)
+                    tr.note(st, d * max(gate, 0.6), n, "pulse", 0.12, 0.25, a=0.002, d=0.05, s=0.5, vib=0.005)
                 if st >= harm_t:
                     tr.note(st, d * 0.6, n + 12, "pulse", 0.06, 0.125, a=0.002, d=0.04, s=0.4)
             else:

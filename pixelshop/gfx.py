@@ -160,6 +160,18 @@ class Canvas:
         rgb = sub[..., :3] if tint is None else np.broadcast_to(np.array(C(tint), np.uint8), sub[..., :3].shape)
         self.a[y0:y1, x0:x1][m] = rgb[m]
 
+    def blit_ghost(self, spr, x, y, scale=1, phase=0):
+        """Dithered (50%) blit for see-through sprites."""
+        if scale != 1:
+            spr = np.repeat(np.repeat(spr, scale, 0), scale, 1)
+        spr = spr.copy()
+        h, w = spr.shape[:2]
+        yy, xx = np.mgrid[0:h, 0:w]
+        spr[((xx + yy + phase) % 2) == 1, 3] = 0
+        lum = spr[..., :3].astype(int).mean(-1, keepdims=True)
+        spr[..., :3] = np.clip(lum * 0.4 + np.array([150, 220, 240]) * 0.6, 0, 255).astype(np.uint8)
+        self.blit(spr, x, y)
+
     def text(self, x, y, s, c="white", scale=1, shadow="ink", align="left"):
         s = str(s)
         if align == "center":

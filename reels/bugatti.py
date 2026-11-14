@@ -1,53 +1,52 @@
-"""Concept reel 3 (grind format): how long to afford a Bugatti on a median paycheck?"""
-import math
+"""Concept reel 3 (grind format): how long to buy a Bugatti on an average paycheck?
 
-import numpy as np
+v2 after review: 12s seamless loop, grind starts at 0.3s, life-expectancy finish line
+("will he make it?"), payoff is AGE 86 big and centred.
+"""
+import math
 
 from pixelshop import audio as A
 from pixelshop import sprites as S
 from pixelshop import ui
-from pixelshop.gfx import background, ease_out, seg
+from pixelshop.gfx import background, ease_io, ease_out, seg
 
 PRICE = 4.1e6            # Bugatti Tourbillon base price EUR 3.8M ~= $4.1M
 PAY = 1232 * 52          # BLS median weekly earnings, full-time, Q3 2026 -> $64,064/yr
 YEARS = math.ceil(PRICE / PAY)   # 64
 START_AGE = 22
-BUILT = 250              # Tourbillon production run
-ELON = 889e9
-ELON_PCT = BUILT * PRICE / ELON * 100   # ~0.12%
+END_AGE = START_AGE + YEARS      # 86
+LIFE_EXP = 79                    # CDC NCHS: US life expectancy at birth, 2024 = 79.0
 
 FACTS = [
     "Bugatti Tourbillon base price: EUR 3.8M (~$4.1M) - Bugatti via press coverage; 250 to be built",
     "Median full-time pay: $1,232/week (BLS, Q3 2026) = $64,064/yr",
-    f"$4.1M / $64,064 = {PRICE / PAY:.2f} -> {YEARS} years; start at {START_AGE}, done at {START_AGE + YEARS}",
-    f"All 250 cars = ${BUILT * PRICE / 1e9:.3f}B = {ELON_PCT:.2f}% of Elon Musk's $889B (Forbes, Nov 13 2026)",
+    f"$4.1M / $64,064 = {PRICE / PAY:.2f} -> {YEARS} years; start at {START_AGE}, done at {END_AGE}",
+    "US life expectancy at birth: 79.0 years in 2024 - CDC NCHS Data Brief 548 (Jan 2026)",
 ]
 
-T_RULES = 1.3
-T_START = 4.6
-T_GRIND = 4.9
-T_DONE = 15.6
-T_DELIV = 16.6
-T_ELON = 20.2
-T_END = 23.0
-SECONDS = 25.5
-
-TXT_RULES = "RULES: SAVE EVERY CENT OF A MEDIAN U.S. FULL-TIME PAYCHECK. NO RENT. NO FOOD."
-TXT_DELIV = f"DELIVERED AT AGE {START_AGE + YEARS}. ONLY {BUILT} WILL EVER BE BUILT."
-TXT_END = "NEXT CUSTOMER? COMMENT WHAT YOU'D GRIND FOR."
-
-MINI_CAR = S.ascii_sprite([
-    "...kkkk...",
-    "..kBccBk..",
-    ".kbbbbbbk.",
-    "kbbbbbbbbk",
-    ".kGk..kGk.",
-])
+SECONDS = 12.0          # two passes of the theme at 100 bpm (6/8) -> seamless loop
+T_GRIND, T_DONE = 0.3, 7.3
+T_SWAP = 7.9
+T_DRIVE = 8.9
+T_REWIND = 10.4
+CX = 118
+BAR_X0, BAR_X1, BAR_Y = 16, 200, 330   # life bar, age 22 -> 88
+AGE_MAX = 88
+MINI_CAR = S.ascii_sprite(["...kkkk...", "..kBccBk..", ".kbbbbbbk.", "kbbbbbbbbk", ".kGk..kGk."])
 
 
-def years_at(t):
+def age_at(t):
+    if t >= T_REWIND:
+        return END_AGE - YEARS * ease_io(seg(t, T_REWIND + 0.2, SECONDS - 0.2))
     p = seg(t, T_GRIND, T_DONE)
-    return YEARS * (p ** 1.7)
+    return START_AGE + YEARS * (1 - (1 - p) ** 2)   # fast early, slows near the finish
+
+
+T_DEATH = T_GRIND + (T_DONE - T_GRIND) * (1 - math.sqrt(1 - (LIFE_EXP - START_AGE) / YEARS))  # ~5.0s
+
+
+def bar_x(age):
+    return int(BAR_X0 + (BAR_X1 - BAR_X0) * (age - START_AGE) / (AGE_MAX - START_AGE))
 
 
 class Reel:
@@ -56,119 +55,103 @@ class Reel:
     music_gain = 0.55
 
     def draw(self, cv, t, hook=False):
-        if hook:
-            t = 0.0
-        ui.shake(cv, t, [(T_DONE, T_DONE + 0.3)], amp=3)
+        ui.shake(cv, t, [(T_DEATH, T_DEATH + 0.3), (T_DONE, T_DONE + 0.3)], amp=3)
         background(cv, t, seed=23)
-        ui.hud(cv, t, "003")
-        if t < T_ELON:
-            ui.title(cv, ["HOW LONG TO BUY A", "BUGATTI ON AN", "AVERAGE PAYCHECK?"], accent={1: "gold"})
+        if T_SWAP <= t < T_REWIND + 0.9:
+            ui.title(cv, [f"DELIVERED AT {END_AGE}.", f"LIFE EXPECTANCY: {LIFE_EXP}."], y=28, fill="red_d",
+                     accent={1: "gold"})
         else:
-            ui.title(cv, ["ELON COULD BUY ALL", f"{BUILT} WITH {ELON_PCT:.2f}%", "OF HIS FORTUNE."],
-                     fill="red_d", accent={1: "gold"})
-        y_years = years_at(t)
-        yrs = int(y_years)
-        age_frac = y_years / YEARS
+            ui.title(cv, ["HOW LONG TO BUY", "A BUGATTI?"], y=28, accent={1: "gold"})
 
-        # ---- stage: sky orbit, car on a pedestal, worker at a desk
-        if t < T_ELON:
-            ang = y_years / 8 * 2 * math.pi
-            cx, cy, r = 135, 182, 74
-            sx, sy = cx - r * math.cos(ang), cy - r * abs(math.sin(ang)) * 0.9
-            day = (int(y_years / 4) % 2) == 0
-            cv.blit(S.SUN if day else S.MOON_SMALL, sx - 5, sy - 5)
-            bob = int(round(math.sin(t * 2) * 1.5))
-            cv.blit(S.CAR, 71, 106 + bob, scale=4)
-            cv.rect(62, 156, 146, 4, "gray_d")
-            cv.rect(62, 156, 146, 1, "gray")
-            if t >= T_DONE:
-                for k in range(6):  # sparkles
-                    a = t * 3 + k
-                    cv.blit(S.SPARK, 135 + 60 * math.cos(a) - 2, 140 + 22 * math.sin(a * 1.3) - 2)
-            cv.text(cv.w // 2, 165, "PRICE " + ui.fmt_money(PRICE), "gold", scale=2, align="center")
-            frame = int(t * 6) % 2 if T_GRIND <= t < T_DONE else 0
-            cv.blit(S.worker(age_frac, frame), 78, 186, scale=3)
-            cv.blit(S.DESK, 112, 204, scale=2)
-            cv.blit(S.CALENDAR, 18, 112)
-            cv.text(25, 128, str(yrs), "white", align="center")
+        age = age_at(t)
+        ghost = LIFE_EXP <= age and t < T_REWIND + 0.6
+
+        # ---------------------------------------------------------- stage: the car
+        drive = ease_io(seg(t, T_DRIVE, T_REWIND)) if t < T_REWIND else 0
+        back = 1 - ease_out(seg(t, T_REWIND + 0.2, T_REWIND + 0.9)) if t >= T_REWIND else 0
+        car_x = 63 + int(drive * 230) - int(back * 230)
+        bob = int(round(math.sin(t * 2.5) * 1.5))
+        cv.blit(S.HYPERCAR, car_x, 104 + bob, scale=4)
+        if T_SWAP <= t < T_REWIND and drive > 0:
+            cv.blit_ghost(S.worker(1.0), car_x + 64, 96 + bob, scale=2, phase=int(t * 8))
+        cv.rect(56, 150, 158, 4, "gray_d")
+        cv.rect(56, 150, 158, 1, "gray")
+        if T_DONE <= t < T_DRIVE:
+            for k in range(6):
+                a = t * 3 + k
+                cv.blit(S.SPARK, 135 + 70 * math.cos(a) - 2, 126 + 22 * math.sin(a * 1.3) - 2)
+        cv.text(135, 160, ui.fmt_money(PRICE), "gold", scale=3, align="center")
+        cv.text(135, 186, f"SAVING ${PAY // 1000}K A YEAR", "cream", scale=2, align="center")
+
+        # ---------------------------------------------------------- lower zone: worker + age
+        frame = int(t * 8) % 2 if T_GRIND <= t < T_DONE else 0
+        wy = 222
+        if ghost:
+            float_y = int(round(math.sin(t * 4) * 2)) - 3
+            if not (T_SWAP <= t < T_REWIND and drive > 0):
+                cv.blit_ghost(S.worker(1.0, frame), 16, wy + float_y, scale=4, phase=int(t * 8))
         else:
-            k = int(min(BUILT, BUILT * seg(t, T_ELON + 0.2, T_ELON + 2.2) ** 0.7))
-            for i in range(k):
-                r, c = divmod(i, 20)
-                cv.blit(MINI_CAR, 16 + c * 12, 110 + r * 10)
-            cv.text(cv.w - 14, 240, f"x{k}", "gold", scale=2, align="right")
+            cv.blit(S.worker((age - START_AGE) / YEARS, frame), 16, wy, scale=4)
+        cv.text(66, 226, "AGE", "cream", scale=2)
+        a_int = int(age)
+        col = "red" if a_int >= LIFE_EXP else "white"
+        if T_DONE <= t < T_SWAP:
+            col = "gold"
+        cv.text(66, 246, str(a_int), col, scale=6)
+        saved = min(PRICE, (age - START_AGE) * PAY)
+        cv.text(CX + 56, 230, "SAVED", "cream", scale=2, align="center")
+        cv.text(CX + 56, 250, ui.fmt_money(saved) if saved >= 1e6 else f"${saved / 1e3:,.0f}K",
+                "gold", scale=2, align="center")
 
-        # ---- stats panel
-        cv.window(8, 262, cv.w - 16, 66, fill="navy_d", border="gold")
-        cv.text(16, 270, f"YEAR {yrs}", "white", scale=2)
-        cv.text(cv.w - 16, 270, f"AGE {START_AGE + yrs}", "cream" if age_frac < 0.75 else "red", scale=2,
-                align="right")
-        saved = min(PRICE, y_years * PAY)
-        cv.text(16, 294, f"SAVED {ui.fmt_money(saved) if saved >= 1e6 else f'${saved:,.0f}'}", "gold")
-        cv.text(cv.w - 16, 294, f"+${PAY:,}/YR", "green", align="right")
-        cv.bar(16, 307, cv.w - 32, 12, saved / PRICE, fg="green", hi="white")
+        # life bar 22 -> 90, finish lines at 79 (tomb) and 86 (car)
+        cv.bar(BAR_X0, BAR_Y, BAR_X1 - BAR_X0, 12, (age - START_AGE) / (AGE_MAX - START_AGE),
+               fg="red" if a_int >= LIFE_EXP else "green", hi="white")
+        x79, x86 = bar_x(LIFE_EXP), bar_x(END_AGE)
+        cv.rect(x79, BAR_Y - 4, 2, 20, "red")
+        cv.blit(S.TOMB, x79 - 7, BAR_Y - 22, scale=2)
+        cv.text(x79 - 2, BAR_Y + 18, str(LIFE_EXP), "red", scale=2, align="right")
+        cv.rect(x86, BAR_Y - 4, 2, 20, "gold")
+        cv.blit(MINI_CAR, x86 - 9, BAR_Y - 16, scale=2)
+        cv.text(x86 + 4, BAR_Y + 18, str(END_AGE), "gold", scale=2)
 
-        # ---- dialog
-        if t < T_RULES:
-            ui.dialog(cv, "", 0, 1)
-        elif t < T_GRIND:
-            ui.dialog(cv, TXT_RULES, t, T_RULES, speaker="SHOPKEEP")
-        elif t < T_DONE:
-            ui.dialog(cv, "...", t, T_GRIND, speaker="GRINDING", cps=3)
-        elif t < T_END:
-            ui.dialog(cv, TXT_DELIV, t, T_DELIV, color="white")
-        else:
-            ui.dialog(cv, TXT_END, t, T_END, color="gold")
-
-        ui.stamp(cv, "START!", t, T_START, color="green", scale=3, y=226, dur=0.6)
-        ui.stamp(cv, "PURCHASED!", t, T_DONE, color="green", scale=3, y=226, dur=T_ELON - T_DONE)
-        if t >= T_END + 0.3:
-            ui.sources(cv, ["SOURCES: BLS Q3 2026 MEDIAN PAY,", "BUGATTI EUR3.8M BASE, FORBES"])
-        if not hook:
-            ui.loop_wipe(cv, t, SECONDS - 0.55, SECONDS - 0.05, lambda c: self.draw(c, 0.0, hook=True))
+        # ---------------------------------------------------------- stamps
+        if T_DEATH <= t < T_DEATH + 1.0:
+            ui.stamp(cv, "LIFE EXPECTANCY", t, T_DEATH, color="red", scale=2, y=112)
+            ui.stamp(cv, "REACHED", t, T_DEATH + 0.08, color="red", scale=3, y=136)
+        if T_DONE <= t < T_SWAP:
+            ui.stamp(cv, f"AGE {END_AGE}", t, T_DONE, color="gold", scale=6, y=100)
         cv.ox = cv.oy = 0
 
     # ------------------------------------------------------------ audio
     def music(self):
-        def bpm(t):
-            return 84 + 70 * seg(t, T_GRIND, T_DONE) ** 1.5
-        a = A.render_song(A.MORNING_MOOD, SECONDS, bpm, layers_at=(0, T_GRIND, T_GRIND + 3), end_at=T_DONE)
-        b = A.render_song(A.MORNING_MOOD, SECONDS, 84, layers_at=(0, 99, 99), gain=0.8)
-        i = int((T_DELIV + 0.4) * A.SR)
-        a[i:] += b[: len(a) - i]
-        return a
+        return A.render_song(A.MORNING_MOOD, SECONDS, 100, layers_at=(0, 0.3, 1.5))
 
     def duck_windows(self):
-        return [(T_DONE, T_DONE + 1.0)]
+        return [(T_DEATH, T_DEATH + 0.4)]
 
     def sfx(self, tr):
-        for tt in ui.type_times(TXT_RULES, T_RULES):
-            A.sfx_blip(tr, tt)
-        A.sfx_select(tr, T_START)
-        last = -1.0
-        prev = 0
+        prev, last = START_AGE, -1.0
         for i in range(int((T_DONE - T_GRIND) * 60)):
             tt = T_GRIND + i / 60
-            y = int(years_at(tt))
-            if y > prev:
-                if tt - last > 0.09:
-                    A.sfx_coin(tr, tt, 0.06)
+            a = int(age_at(tt))
+            if a > prev:
+                if tt - last > 0.08:
+                    A.sfx_coin(tr, tt, 0.05)
                     last = tt
-                prev = y
+                prev = a
+        for k in range(3):  # alarm at the life-expectancy line
+            A.sfx_blip(tr, T_DEATH + k * 0.16, "A5", 0.12)
+            A.sfx_blip(tr, T_DEATH + k * 0.16 + 0.08, "E5", 0.12)
+        A.sfx_thud(tr, T_DEATH, 0.45)
         A.sfx_kaching(tr, T_DONE, 0.14)
-        A.sfx_fanfare(tr, T_DONE + 0.25, 0.14)
-        for tt in ui.type_times(TXT_DELIV, T_DELIV):
-            A.sfx_blip(tr, tt, "E5", 0.04)
-        prev = 0
-        for i in range(int(2.4 * 40)):
-            tt = T_ELON + 0.2 + i / 40
-            k = int(min(BUILT, BUILT * seg(tt, T_ELON + 0.2, T_ELON + 2.2) ** 0.7))
-            if k - prev >= 6:
-                A.sfx_pop(tr, tt, k // 6)
-                prev = k
-        for tt in ui.type_times(TXT_END, T_END):
-            A.sfx_blip(tr, tt, "C6", 0.04)
-        A.sfx_whoosh(tr, SECONDS - 0.6, 0.5)
+        A.sfx_fanfare(tr, T_DONE + 0.2, 0.14)
+        A.sfx_thud(tr, T_SWAP, 0.35)
+        for k in range(8):  # engine rev as the ghost drives off
+            A.sfx_tick(tr, T_DRIVE + k * 0.18, 0.07, pitch=48 + k * 3)
+        A.sfx_whoosh(tr, T_DRIVE + 0.8, 0.6, 0.08)
+        A.sfx_whoosh(tr, T_REWIND, 0.8, 0.09)
+        for i in range(12):
+            A.sfx_tick(tr, T_REWIND + 0.1 + i * 0.12, 0.05, pitch=90 - i * 2)
 
 
 REEL = Reel()
